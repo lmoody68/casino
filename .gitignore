@@ -2,6 +2,9 @@ __pycache__/
 *.pyc
 *.pyo
 chips.json
+settings.json
 .venv/
 venv/
 .DS_Store
+sfx_cache/
+casino_music.wav

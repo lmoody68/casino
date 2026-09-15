@@ -6,10 +6,19 @@ returns your bet; better hands pay more). Uses the shared casino ``bank``.
 """
 import tkinter as tk
 import random
+import threading
 from collections import Counter
 
-FELT = "#0e5a3c"; DARKFELT = "#0a4630"; IVORY = "#f7faf5"; GOLD = "#f4d35e"
-WIN = "#8fe6b8"; LOSE = "#e06a5c"; HELD = "#f4d35e"
+import theme
+import cards
+import coach
+import dealer
+import sfx
+import fx
+import stats
+
+FELT = "#0c1020"; DARKFELT = "#1e2647"; IVORY = "#f7faf5"; GOLD = "#f6d365"
+WIN = "#7fe0a8"; LOSE = "#e0616b"; HELD = "#f6d365"
 CARD_RED = "#c0392b"; CARD_BLACK = "#141414"
 MIN_BET = 5
 
@@ -23,6 +32,20 @@ PAYTABLE = [
     ("Full House", 9), ("Flush", 6), ("Straight", 4),
     ("Three of a Kind", 3), ("Two Pair", 2), ("Jacks or Better", 1),
 ]
+
+RULES = (
+    "Jacks or Better video poker.\n\n"
+    "1.  Set your bet and press DEAL — you get 5 cards.\n"
+    "2.  Tap HOLD on the cards you want to keep.\n"
+    "3.  Press DRAW — the cards you didn't hold are replaced.\n"
+    "4.  You're paid by your final hand.\n\n"
+    "PAYOUTS (× your bet):\n"
+    "Royal Flush 250×    Straight Flush 50×\n"
+    "Four of a Kind 25×    Full House 9×    Flush 6×\n"
+    "Straight 4×    Three of a Kind 3×    Two Pair 2×\n"
+    "Pair of Jacks or better 1×\n\n"
+    "A pair lower than Jacks does not pay."
+)
 
 
 def rank_label(r):
@@ -68,42 +91,61 @@ def open_game(parent, bank, on_change):
     win = tk.Toplevel(parent)
     win.title("Video Poker")
     win.configure(bg=FELT)
-    win.geometry("620x560")
-    win.resizable(False, False)
+    win.geometry("620x620")
+    win.resizable(True, True)
+    win.minsize(480, 480)
+    theme.header(win, "VIDEO POKER", w=620)
+    theme.music_bar(win).place(relx=1.0, x=-8, y=8, anchor="ne")
 
-    chips = tk.Label(win, text="", font=("Consolas", 20, "bold"), bg=FELT, fg=GOLD)
+    body = theme.scrollable(win, bg=FELT)          # scrollable so every control is always reachable
+
+    chips = tk.Label(body, text="", font=("Consolas", 20, "bold"), bg=FELT, fg=GOLD)
     chips.pack(pady=(14, 4))
 
-    pay_text = "   ".join(f"{n} {m}×" for n, m in PAYTABLE)
-    tk.Label(win, text=pay_text, bg=FELT, fg="#b9d6c7", font=("Consolas", 9)).pack(pady=(0, 8))
+    db = dealer.DealerBox(body, win, felt=FELT)
+    db.pack(fill="x", padx=18, pady=(0, 2))
 
-    card_row = tk.Frame(win, bg=FELT)
-    card_row.pack(pady=6)
-    card_lbls, hold_btns = [], []
+    pay_text = "   ".join(f"{n} {m}×" for n, m in PAYTABLE)
+    tk.Label(body, text=pay_text, bg=FELT, fg="#b9d6c7", font=("Consolas", 9)).pack(pady=(0, 8))
+
+    FELT_GREEN = "#0a6b3f"
+    CW, CH = 86, 120
+    felt = tk.Frame(body, bg=FELT_GREEN, highlightbackground=GOLD, highlightthickness=3)
+    felt.pack(pady=8)
+    tk.Label(felt, text="●   ●   ●    FIVE-CARD DRAW    ●   ●   ●", font=("Consolas", 9, "bold"),
+             bg=FELT_GREEN, fg="#8fd0ab").pack(pady=(8, 0))
+    card_row = tk.Frame(felt, bg=FELT_GREEN)
+    card_row.pack(padx=14, pady=(4, 12))
+    card_canvases, hold_btns = [], []
     for i in range(5):
-        col = tk.Frame(card_row, bg=FELT)
-        col.grid(row=0, column=i, padx=7)
-        cl = tk.Label(col, text="?", font=("Segoe UI", 30, "bold"), bg=IVORY, fg=CARD_BLACK,
-                      width=3, height=2)
-        cl.pack()
-        hb = tk.Button(col, text="HOLD", font=("Segoe UI", 10, "bold"), width=6, relief="flat",
+        col = tk.Frame(card_row, bg=FELT_GREEN)
+        col.grid(row=0, column=i, padx=6)
+        cv = tk.Canvas(col, width=CW + 8, height=CH + 8, bg=FELT_GREEN, highlightthickness=0)
+        cv.pack()
+        hb = tk.Button(col, text="HOLD", font=("Segoe UI", 10, "bold"), width=7, relief="flat",
                        bg=DARKFELT, fg="white", command=lambda i=i: toggle_hold(i))
         hb.pack(pady=6)
-        card_lbls.append(cl)
+        card_canvases.append(cv)
         hold_btns.append(hb)
 
-    msg = tk.Label(win, text="Set your bet and press DEAL.", font=("Segoe UI", 14, "bold"),
+    msg = tk.Label(body, text="Set your bet and press DEAL.", font=("Segoe UI", 14, "bold"),
                    bg=FELT, fg="white", wraplength=560)
     msg.pack(pady=(8, 6))
 
-    betrow = tk.Frame(win, bg=FELT)
+    betrow = tk.Frame(body, bg=FELT)
     betrow.pack(pady=4)
 
     def show_card(i):
-        r, s = st["cards"][i]
-        card_lbls[i].config(text=f"{rank_label(r)}\n{s}",
-                            fg=CARD_RED if s in RED_SUITS else CARD_BLACK)
+        cv = card_canvases[i]
+        cv.delete("all")
+        if st["cards"]:
+            r, s = st["cards"][i]
+            cards.draw_card(cv, 4, 4, CW, CH, r, s, face_up=True)
+        else:
+            cards.draw_card(cv, 4, 4, CW, CH, face_up=False)
         held = st["held"][i]
+        if held:
+            cv.create_rectangle(2, 2, CW + 6, CH + 6, outline=GOLD, width=3)
         hold_btns[i].config(bg=HELD if held else DARKFELT, fg="#0a3d29" if held else "white",
                             text="HELD" if held else "HOLD")
 
@@ -147,6 +189,8 @@ def open_game(parent, bank, on_change):
         st["phase"] = "draw"
         for i in range(5):
             show_card(i)
+        sfx.play("card")
+        coach_lbl.config(text="")
         msg.config(text="Tap HOLD on the cards to keep, then press DRAW.", fg="white")
         refresh()
 
@@ -155,13 +199,23 @@ def open_game(parent, bank, on_change):
             if not st["held"][i]:
                 st["cards"][i] = st["deck"].pop()
             show_card(i)
+        sfx.play("card")
         name, mult = evaluate(st["cards"])
         if mult > 0:
             payout = st["bet"] * mult
             bank.add(payout)
             msg.config(text=f"{name}!  You win ${payout}  ({mult}×)", fg=WIN)
+            ev = "jackpot" if mult >= 25 else ("bigwin" if mult >= 6 else "win")
+            db.react(ev, amt=payout, game="Video Poker")
+            sfx.play(ev)
+            stats.record("Video Poker", "win", payout - st["bet"], wager=st["bet"])
+            if mult >= 6:
+                fx.celebrate(win, payout, big=True)
         else:
             msg.config(text=f"{name}. Better luck next hand.", fg=LOSE)
+            db.react("loss", game="Video Poker")
+            sfx.play("lose")
+            stats.record("Video Poker", "loss", -st["bet"], wager=st["bet"])
         st["phase"] = "bet"
         refresh()
 
@@ -177,8 +231,70 @@ def open_game(parent, bank, on_change):
                          command=lambda: change_bet(MIN_BET), bg=DARKFELT, fg="white", relief="flat")
     plus_btn.pack(side="left", padx=4)
 
-    action_btn = tk.Button(win, text="DEAL", font=("Segoe UI", 16, "bold"), command=action,
+    action_btn = tk.Button(body, text="DEAL", font=("Segoe UI", 16, "bold"), command=action,
                            bg=IVORY, fg="#0a3d29", activebackground="#d7ead5", relief="flat", padx=40, pady=12)
     action_btn.pack(pady=14)
 
+    # --- AI Strategy Coach: exact expected-value solver (runs off the UI thread) ---
+    coach_lbl = tk.Label(body, text="", font=("Segoe UI", 11, "bold"), bg=FELT, fg=GOLD,
+                         wraplength=560, justify="center")
+    coach_lbl.pack(pady=(2, 0))
+
+    def show_advice():
+        if st["phase"] != "draw":
+            coach_lbl.config(text="🧠  Deal a hand first — then I'll find the best cards to hold.")
+            return
+        coach_btn.config(state="disabled")
+        coach_lbl.config(text="🧠  Analyzing every possible draw…")
+        hand = list(st["cards"])
+
+        def work():
+            held, ev, reason = coach.video_poker_advice(hand)
+
+            def done():
+                coach_btn.config(state="normal")
+                if st["phase"] != "draw" or st["cards"] != hand:
+                    return                        # the hand changed while we were thinking
+                coach_lbl.config(text=f"🧠  {reason}")
+                for i in range(5):                # cyan dashed outline on the cards to keep
+                    show_card(i)
+                    if i in held:
+                        card_canvases[i].create_rectangle(3, 3, CW + 5, CH + 5,
+                                                          outline="#37bff0", width=3, dash=(4, 3))
+            win.after(0, done)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    coach_btn = tk.Button(body, text="🧠  Best Hold?", font=("Segoe UI", 10, "bold"), bg=theme.NIGHT2,
+                          fg=GOLD, activebackground="#232b4d", relief="flat", bd=0, padx=12, pady=5,
+                          cursor="hand2", command=show_advice)
+    coach_btn.pack(pady=(6, 2))
+
+    def new_game():
+        if st["phase"] == "draw":
+            return                                  # don't abandon a hand mid-draw
+        st["phase"] = "bet"
+        st["cards"] = []
+        st["held"] = [False] * 5
+        for i in range(5):
+            show_card(i)
+        coach_lbl.config(text="")
+        msg.config(text="New hand. Set your bet and press DEAL.", fg="white")
+        refresh()
+
+    bottom = tk.Frame(body, bg=FELT)
+    bottom.pack(pady=(0, 16))
+    tk.Button(bottom, text="🔄  New Game", font=("Segoe UI", 9, "bold"), bg=theme.NIGHT2, fg=GOLD,
+              activebackground="#232b4d", relief="flat", bd=0, padx=10, pady=4, cursor="hand2",
+              command=new_game).pack(side="left", padx=6)
+    tk.Button(bottom, text="❔  How to Play", font=("Segoe UI", 9, "bold"), bg=theme.NIGHT2, fg=GOLD,
+              activebackground="#232b4d", relief="flat", bd=0, padx=10, pady=4, cursor="hand2",
+              command=lambda: theme.show_rules(win, "VIDEO POKER", RULES)).pack(side="left", padx=6)
+    tk.Button(bottom, text="📊  Stats", font=("Segoe UI", 9, "bold"), bg=theme.NIGHT2, fg=GOLD,
+              activebackground="#232b4d", relief="flat", bd=0, padx=10, pady=4, cursor="hand2",
+              command=lambda: stats.show_panel(win)).pack(side="left", padx=6)
+
+    for i in range(5):
+        show_card(i)
     refresh()
+    db.react("greeting", game="Video Poker")

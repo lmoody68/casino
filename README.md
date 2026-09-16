@@ -5,12 +5,15 @@ Six playable casino games — **Craps, Roulette, Slots, Video Poker, Blackjack, 
 ![Mac Land Casino lobby](screenshots/lobby.png)
 
 <p align="center">
-  <img src="screenshots/roulette-wheel.png" width="32%" alt="Roulette wheel and betting board" />
-  <img src="screenshots/craps-multiplayer.png" width="32%" alt="Multiplayer Craps with rotating shooters" />
-  <img src="screenshots/blackjack-players.png" width="32%" alt="Blackjack with computer players" />
+  <img src="screenshots/roulette-wheel.png" width="49%" alt="Roulette wheel and betting board" />
+  <img src="screenshots/craps-multiplayer.png" width="49%" alt="Multiplayer Craps with rotating shooters" />
+</p>
+<p align="center">
+  <img src="screenshots/blackjack-players.png" width="49%" alt="Blackjack with computer players" />
+  <img src="screenshots/holdem.png" width="49%" alt="Texas Hold'em against bots" />
 </p>
 
-<p align="center"><em>Roulette (drawn wheel) · multiplayer Craps (rotating shooters) · Blackjack with computer players — all with a shared bankroll and custom names.</em></p>
+<p align="center"><em>Roulette (drawn wheel) · multiplayer Craps (rotating shooters) · Blackjack with computer players · Texas Hold'em against bots — all with a shared bankroll and custom names.</em></p>
 
 ---
 

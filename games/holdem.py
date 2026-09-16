@@ -488,6 +488,9 @@ def open_game(parent, bank, on_change):
     tk.Button(bottom, text="📊  Stats", font=("Segoe UI", 9, "bold"), bg=theme.NIGHT2, fg=GOLD,
               activebackground="#232b4d", relief="flat", bd=0, padx=10, pady=4, cursor="hand2",
               command=lambda: stats.show_panel(win)).pack(side="left", padx=6)
+    tk.Button(bottom, text="👤  Names", font=("Segoe UI", 9, "bold"), bg=theme.NIGHT2, fg=GOLD,
+              activebackground="#232b4d", relief="flat", bd=0, padx=10, pady=4, cursor="hand2",
+              command=lambda: theme.names_dialog(win, on_saved=lambda nm: render())).pack(side="left", padx=6)
 
     render()
     refresh()

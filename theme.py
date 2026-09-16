@@ -106,6 +106,55 @@ def show_rules(parent, title, body):
     win.transient(parent)
 
 
+def names_dialog(parent, on_saved=None):
+    """The shared 'Table Names' editor — set your name and the opponent names.
+    Used by the lobby and by the in-game 👤 Name buttons. Calls on_saved(new_name)
+    after saving so the caller can refresh its display."""
+    import profile
+    dlg = tk.Toplevel(parent)
+    dlg.title("Table Names")
+    dlg.configure(bg=NIGHT)
+    dlg.resizable(False, False)
+    header(dlg, "TABLE NAMES", w=420, h=60)
+
+    def _entry(par, value):
+        e = tk.Entry(par, font=("Segoe UI", 12, "bold"), justify="center", width=15,
+                     bg=NIGHT2, fg=GOLD, insertbackground=GOLD, relief="flat")
+        e.insert(0, value)
+        return e
+
+    tk.Label(dlg, text="Your name", font=("Segoe UI", 10, "bold"), bg=NIGHT, fg=IVORY).pack(pady=(14, 2))
+    you_ent = _entry(dlg, profile.name())
+    you_ent.pack(pady=(0, 10), ipady=4)
+    you_ent.focus_set()
+    you_ent.select_range(0, "end")
+
+    tk.Label(dlg, text="Opponents (computer players)", font=("Segoe UI", 10, "bold"),
+             bg=NIGHT, fg=IVORY).pack(pady=(4, 4))
+    grid = tk.Frame(dlg, bg=NIGHT)
+    grid.pack(padx=24)
+    bots = profile.bot_names()
+    bot_ents = []
+    for i in range(6):
+        e = _entry(grid, bots[i] if i < len(bots) else "")
+        e.grid(row=i // 2, column=i % 2, padx=5, pady=4, ipady=3)
+        bot_ents.append(e)
+    tk.Label(dlg, text="(at least 3 are kept; blank slots are ignored)", font=("Segoe UI", 8),
+             bg=NIGHT, fg=MUTED).pack(pady=(4, 0))
+
+    def save(_=None):
+        nm = profile.set_name(you_ent.get())
+        profile.set_bot_names([e.get() for e in bot_ents])
+        if on_saved:
+            on_saved(nm)
+        dlg.destroy()
+
+    you_ent.bind("<Return>", save)
+    tk.Button(dlg, text="Save", font=("Segoe UI", 11, "bold"), bg=GOLD, fg=INK, relief="flat",
+              bd=0, padx=24, pady=6, cursor="hand2", command=save).pack(pady=(12, 18))
+    dlg.transient(parent)
+
+
 def rules_button(win, title, body):
     """A small '❔ How to Play' button that opens the rules popup. Packed by the caller."""
     return tk.Button(win, text="❔  How to Play", font=("Segoe UI", 9, "bold"),

@@ -146,9 +146,9 @@ def open_game(parent, bank, on_change):
 
     # seat anchor points (name/stack label center); cards drawn near them
     SEATS = [(TW // 2, TH - 96),          # 0 = you (bottom)
-             (86, 150),                   # 1 = left
-             (TW // 2, 60),               # 2 = top
-             (TW - 86, 150)]              # 3 = right
+             (84, 156),                   # 1 = left
+             (TW // 2, 74),               # 2 = top
+             (TW - 84, 156)]              # 3 = right
 
     def draw_table():
         _rrt(16, 16, TW - 16, TH - 16, 150, fill=FELT_GREEN, outline=GOLD, width=4)
@@ -174,28 +174,28 @@ def open_game(parent, bank, on_change):
         p = st["players"][i]
         sx, sy = SEATS[i]
         you = p["is_you"]
-        # hole cards
         cw, ch, off = (46, 66, 26) if you else (30, 44, 18)
+        # lay the seat out so the name/stack/status never sit on top of the cards
+        if you:                                        # you: cards up top, labels below the anchor
+            card_cy = sy - ch - 18
+            name_y, info_y, tag_y, show_y = sy, sy + 15, sy + 30, sy + 44
+        else:                                          # others: name above the cards, labels below
+            card_cy = sy - ch / 2 + 4
+            name_y = card_cy - 13
+            info_y = card_cy + ch + 10
+            tag_y = card_cy + ch + 22
+            show_y = card_cy + ch + 34
         if p["cards"]:
             faceup = you or st["street"] == "showdown"
-            handw = cw + off
-            bx = sx - handw / 2
-            cy = sy + (16 if i == 2 else (-ch - 14 if i == 0 else -ch / 2))
-            # place your cards below your label; others above/beside their label
-            if you:
-                cy = sy - ch - 16
-            elif i == 2:
-                cy = sy + 14
-            else:
-                cy = sy - ch / 2
+            bx = sx - (cw + off) / 2
             for j, (r, s) in enumerate(p["cards"]):
-                cards.draw_card(table, bx + j * off, cy, cw, ch, r, s, face_up=faceup)
-        # name + stack + status
+                cards.draw_card(table, bx + j * off, card_cy, cw, ch, r, s, face_up=faceup)
         nm = profile.name() if you else p["name"]
-        col = GOLD if i == st["actor"] and st["in_hand"] and not p["folded"] else IVORY
+        active = i == st["actor"] and st["in_hand"] and not p["folded"]
+        col = GOLD if active else IVORY
         stack = bank.balance if you else p["stack"]
-        table.create_text(sx, sy, text=f"{nm}", font=("Georgia", 11, "bold"), fill=col)
-        table.create_text(sx, sy + 15, text=f"${stack}", font=("Consolas", 10, "bold"), fill=MUTED)
+        table.create_text(sx, name_y, text=nm, font=("Georgia", 11, "bold"), fill=col)
+        table.create_text(sx, info_y, text=f"${stack}", font=("Consolas", 10, "bold"), fill=MUTED)
         tags = []
         if p["folded"]:
             tags.append("FOLD")
@@ -206,10 +206,10 @@ def open_game(parent, bank, on_change):
         if p["committed"]:
             tags.append(f"bet ${p['committed']}")
         if tags:
-            table.create_text(sx, sy + 30, text="  ·  ".join(tags), font=("Consolas", 8, "bold"),
+            table.create_text(sx, tag_y, text="  ·  ".join(tags), font=("Consolas", 8, "bold"),
                               fill="#cfe8d8")
         if st["street"] == "showdown" and not p["folded"] and p["cards"]:
-            table.create_text(sx, sy + (46 if i != 2 else 60), text=hand_name(p["cards"] + st["community"]),
+            table.create_text(sx, show_y, text=hand_name(p["cards"] + st["community"]),
                               font=("Consolas", 8, "bold"), fill=GOLD)
 
     def render():

@@ -2,8 +2,14 @@
 
 Six playable casino games — **Craps, Roulette, Slots, Video Poker, Blackjack, and Texas Hold'em** — sharing one **persistent chip bankroll**, all launched from a luxe dark-and-gold lobby. Built in **pure Python** (tkinter). The only optional dependency is `edge-tts` for the neural dealer voice — everything else is the standard library, and the app degrades gracefully when extras aren't present.
 
-> _Add screenshots here — snap the lobby and a couple of games into a `screenshots/` folder._
-> `![Lobby](screenshots/lobby.png)`
+![Mac Land Casino lobby](screenshots/lobby.png)
+
+<p align="center">
+  <img src="screenshots/craps-multiplayer.png" width="49%" alt="Multiplayer Craps with rotating shooters" />
+  <img src="screenshots/blackjack-players.png" width="49%" alt="Blackjack with computer players" />
+</p>
+
+<p align="center"><em>Multiplayer Craps (rotating shooters) · Blackjack with computer players — all with custom names.</em></p>
 
 ---
 
